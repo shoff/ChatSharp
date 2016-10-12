@@ -31,11 +31,13 @@ namespace ChatSharp
 #if DEBUG
             // This is the default behavior if 3rd parties want to handle certain messages themselves
             // However, if it happens from our own code, we probably did something wrong
-            if (Handlers.ContainsKey(message.ToUpper()))
+            if (this.Handlers.ContainsKey(message.ToUpper()))
+            {
                 Console.WriteLine("Warning: {0} handler has been overwritten", message);
+            }
 #endif
             message = message.ToUpper();
-            Handlers[message] = handler;
+            this.Handlers[message] = handler;
         }
 
         internal static DateTime DateTimeFromIrcTime(int time)
@@ -66,18 +68,24 @@ namespace ChatSharp
         {
             get
             {
-                return ServerHostname + ":" + ServerPort;
+                return this.ServerHostname + ":" + this.ServerPort;
             }
             internal set
             {
                 string[] parts = value.Split(':');
                 if (parts.Length > 2 || parts.Length == 0)
+                {
                     throw new FormatException("Server address is not in correct format ('hostname:port')");
-                ServerHostname = parts[0];
+                }
+                this.ServerHostname = parts[0];
                 if (parts.Length > 1)
-                    ServerPort = int.Parse(parts[1]);
+                {
+                    this.ServerPort = int.Parse(parts[1]);
+                }
                 else
-                    ServerPort = 6667;
+                {
+                    this.ServerPort = 6667;
+                }
             }
         }
 
@@ -135,23 +143,29 @@ namespace ChatSharp
         /// <param name="useSSL">Connect with SSL if true.</param>
         public IrcClient(string serverAddress, IrcUser user, bool useSSL = false)
         {
-            if (serverAddress == null) throw new ArgumentNullException("serverAddress");
-            if (user == null) throw new ArgumentNullException("user");
+            if (serverAddress == null)
+            {
+                throw new ArgumentNullException("serverAddress");
+            }
+            if (user == null)
+            {
+                throw new ArgumentNullException("user");
+            }
 
-            User = user;
-            ServerAddress = serverAddress;
-            Encoding = Encoding.UTF8;
-            Channels = new ChannelCollection(this);
-            Settings = new ClientSettings();
-            Handlers = new Dictionary<string, MessageHandler>();
+            this.User = user;
+            this.ServerAddress = serverAddress;
+            this.Encoding = Encoding.UTF8;
+            this.Channels = new ChannelCollection(this);
+            this.Settings = new ClientSettings();
+            this.Handlers = new Dictionary<string, MessageHandler>();
             MessageHandlers.RegisterDefaultHandlers(this);
-            RequestManager = new RequestManager();
-            UseSSL = useSSL;
-            WriteQueue = new ConcurrentQueue<string>();
-            ServerInfo = new ServerInfo();
-            PrivmsgPrefix = "";
-            Users = new UserPool();
-            Users.Add(User); // Add self to user pool
+            this.RequestManager = new RequestManager();
+            this.UseSSL = useSSL;
+            this.WriteQueue = new ConcurrentQueue<string>();
+            this.ServerInfo = new ServerInfo();
+            this.PrivmsgPrefix = "";
+            this.Users = new UserPool();
+            this.Users.Add(this.User); // Add self to user pool
         }
 
         /// <summary>
@@ -159,28 +173,36 @@ namespace ChatSharp
         /// </summary>
         public void ConnectAsync()
         {
-            if (Socket != null && Socket.Connected) throw new InvalidOperationException("Socket is already connected to server.");
-            Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            ReadBuffer = new byte[ReadBufferLength];
-            ReadBufferIndex = 0;
-            PingTimer = new Timer(30000);
-            PingTimer.Elapsed += (sender, e) => 
+            if (this.Socket != null && this.Socket.Connected)
             {
-                if (!string.IsNullOrEmpty(ServerNameFromPing))
-                    SendRawMessage("PING :{0}", ServerNameFromPing);
+                throw new InvalidOperationException("Socket is already connected to server.");
+            }
+            this.Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            this.ReadBuffer = new byte[ReadBufferLength];
+            this.ReadBufferIndex = 0;
+            this.PingTimer = new Timer(30000);
+            this.PingTimer.Elapsed += (sender, e) => 
+            {
+                if (!string.IsNullOrEmpty(this.ServerNameFromPing))
+                {
+                    SendRawMessage("PING :{0}", this.ServerNameFromPing);
+                }
             };
             var checkQueue = new Timer(1000);
             checkQueue.Elapsed += (sender, e) =>
             {
                 string nextMessage;
-                if (WriteQueue.Count > 0)
+                if (this.WriteQueue.Count > 0)
                 {
-                    while (!WriteQueue.TryDequeue(out nextMessage));
+                    while (!this.WriteQueue.TryDequeue(out nextMessage))
+                    {
+                        ;
+                    }
                     SendRawMessage(nextMessage);
                 }
             };
             checkQueue.Start();
-            Socket.BeginConnect(ServerHostname, ServerPort, ConnectComplete, null);
+            this.Socket.BeginConnect(this.ServerHostname, this.ServerPort, ConnectComplete, null);
         }
 
         /// <summary>
@@ -197,45 +219,55 @@ namespace ChatSharp
         public void Quit(string reason)
         {
             if (reason == null)
-                SendRawMessage("QUIT");
-            else
-                SendRawMessage("QUIT :{0}", reason);
-            Socket.BeginDisconnect(false, ar =>
             {
-                Socket.EndDisconnect(ar);
-                NetworkStream.Dispose();
-                NetworkStream = null;
+                SendRawMessage("QUIT");
+            }
+            else
+            {
+                SendRawMessage("QUIT :{0}", reason);
+            }
+            this.Socket.BeginDisconnect(false, ar =>
+            {
+                this.Socket.EndDisconnect(ar);
+                this.NetworkStream.Dispose();
+                this.NetworkStream = null;
             }, null);
-            PingTimer.Dispose();
+            this.PingTimer.Dispose();
         }
 
         private void ConnectComplete(IAsyncResult result)
         {
-            Socket.EndConnect(result);
+            this.Socket.EndConnect(result);
 
-            NetworkStream = new NetworkStream(Socket);
-            if (UseSSL)
+            this.NetworkStream = new NetworkStream(this.Socket);
+            if (this.UseSSL)
             {
-                if (IgnoreInvalidSSL)
-                    NetworkStream = new SslStream(NetworkStream, false, (sender, certificate, chain, policyErrors) => true);
+                if (this.IgnoreInvalidSSL)
+                {
+                    this.NetworkStream = new SslStream(this.NetworkStream, false, (sender, certificate, chain, policyErrors) => true);
+                }
                 else
-                    NetworkStream = new SslStream(NetworkStream);
-                ((SslStream)NetworkStream).AuthenticateAsClient(ServerHostname);
+                {
+                    this.NetworkStream = new SslStream(this.NetworkStream);
+                }
+                ((SslStream) this.NetworkStream).AuthenticateAsClient(this.ServerHostname);
             }
 
-            NetworkStream.BeginRead(ReadBuffer, ReadBufferIndex, ReadBuffer.Length, DataRecieved, null);
+            this.NetworkStream.BeginRead(this.ReadBuffer, this.ReadBufferIndex, this.ReadBuffer.Length, DataRecieved, null);
             // Write login info
-            if (!string.IsNullOrEmpty(User.Password))
-                SendRawMessage("PASS {0}", User.Password);
-            SendRawMessage("NICK {0}", User.Nick);
+            if (!string.IsNullOrEmpty(this.User.Password))
+            {
+                SendRawMessage("PASS {0}", this.User.Password);
+            }
+            SendRawMessage("NICK {0}", this.User.Nick);
             // hostname, servername are ignored by most IRC servers
-            SendRawMessage("USER {0} hostname servername :{1}", User.User, User.RealName);
-            PingTimer.Start();
+            SendRawMessage("USER {0} hostname servername :{1}", this.User.User, this.User.RealName);
+            this.PingTimer.Start();
         }
 
         private void DataRecieved(IAsyncResult result)
         {
-            if (NetworkStream == null)
+            if (this.NetworkStream == null)
             {
                 OnNetworkError(new SocketErrorEventArgs(SocketError.NotConnected));
                 return;
@@ -244,42 +276,48 @@ namespace ChatSharp
             int length;
             try
             {
-                length = NetworkStream.EndRead(result) + ReadBufferIndex;
+                length = this.NetworkStream.EndRead(result) + this.ReadBufferIndex;
             }
             catch (IOException e)
             {
                 var socketException = e.InnerException as SocketException;
                 if (socketException != null)
+                {
                     OnNetworkError(new SocketErrorEventArgs(socketException.SocketErrorCode));
+                }
                 else
+                {
                     throw;
+                }
                 return;
             }
 
-            ReadBufferIndex = 0;
+            this.ReadBufferIndex = 0;
             while (length > 0)
             {
-                int messageLength = Array.IndexOf(ReadBuffer, (byte)'\n', 0, length);
+                int messageLength = Array.IndexOf(this.ReadBuffer, (byte)'\n', 0, length);
                 if (messageLength == -1) // Incomplete message
                 {
-                    ReadBufferIndex = length;
+                    this.ReadBufferIndex = length;
                     break;
                 }
                 messageLength++;
-                var message = Encoding.GetString(ReadBuffer, 0, messageLength - 2); // -2 to remove \r\n
+                var message = this.Encoding.GetString(this.ReadBuffer, 0, messageLength - 2); // -2 to remove \r\n
                 HandleMessage(message);
-                Array.Copy(ReadBuffer, messageLength, ReadBuffer, 0, length - messageLength);
+                Array.Copy(this.ReadBuffer, messageLength, this.ReadBuffer, 0, length - messageLength);
                 length -= messageLength;
             }
-            NetworkStream.BeginRead(ReadBuffer, ReadBufferIndex, ReadBuffer.Length - ReadBufferIndex, DataRecieved, null);
+            this.NetworkStream.BeginRead(this.ReadBuffer, this.ReadBufferIndex, this.ReadBuffer.Length - this.ReadBufferIndex, DataRecieved, null);
         }
 
         private void HandleMessage(string rawMessage)
         {
             OnRawMessageRecieved(new RawMessageEventArgs(rawMessage, false));
             var message = new IrcMessage(rawMessage);
-            if (Handlers.ContainsKey(message.Command.ToUpper()))
-                Handlers[message.Command.ToUpper()](this, message);
+            if (this.Handlers.ContainsKey(message.Command.ToUpper()))
+            {
+                this.Handlers[message.Command.ToUpper()](this, message);
+            }
             else
             {
                 // TODO: Fire an event or something
@@ -291,23 +329,23 @@ namespace ChatSharp
         /// </summary>
         public void SendRawMessage(string message, params object[] format)
         {
-            if (NetworkStream == null)
+            if (this.NetworkStream == null)
             {
                 OnNetworkError(new SocketErrorEventArgs(SocketError.NotConnected));
                 return;
             }
 
             message = string.Format(message, format);
-            var data = Encoding.GetBytes(message + "\r\n");
+            var data = this.Encoding.GetBytes(message + "\r\n");
 
-            if (!IsWriting)
+            if (!this.IsWriting)
             {
-                IsWriting = true;
-                NetworkStream.BeginWrite(data, 0, data.Length, MessageSent, message);
+                this.IsWriting = true;
+                this.NetworkStream.BeginWrite(data, 0, data.Length, MessageSent, message);
             }
             else
             {
-                WriteQueue.Enqueue(message);
+                this.WriteQueue.Enqueue(message);
             }
         }
 
@@ -321,37 +359,44 @@ namespace ChatSharp
 
         private void MessageSent(IAsyncResult result)
         {
-            if (NetworkStream == null)
+            if (this.NetworkStream == null)
             {
                 OnNetworkError(new SocketErrorEventArgs(SocketError.NotConnected));
-                IsWriting = false;
+                this.IsWriting = false;
                 return;
             }
 
             try
             {
-                NetworkStream.EndWrite(result);
+                this.NetworkStream.EndWrite(result);
             }
             catch (IOException e)
             {
                 var socketException = e.InnerException as SocketException;
                 if (socketException != null)
+                {
                     OnNetworkError(new SocketErrorEventArgs(socketException.SocketErrorCode));
+                }
                 else
+                {
                     throw;
+                }
                 return;
             }
             finally
             {
-                IsWriting = false;
+                this.IsWriting = false;
             }
 
             OnRawMessageSent(new RawMessageEventArgs((string)result.AsyncState, true));
 
             string nextMessage;
-            if (WriteQueue.Count > 0)
+            if (this.WriteQueue.Count > 0)
             {
-                while (!WriteQueue.TryDequeue(out nextMessage));
+                while (!this.WriteQueue.TryDequeue(out nextMessage))
+                {
+                    ;
+                }
                 SendRawMessage(nextMessage);
             }
         }
@@ -362,7 +407,10 @@ namespace ChatSharp
         public event EventHandler<SocketErrorEventArgs> NetworkError;
         internal void OnNetworkError(SocketErrorEventArgs e)
         {
-            if (NetworkError != null) NetworkError(this, e);
+            if (this.NetworkError != null)
+            {
+                this.NetworkError(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a raw message is sent.
@@ -370,7 +418,10 @@ namespace ChatSharp
         public event EventHandler<RawMessageEventArgs> RawMessageSent;
         internal void OnRawMessageSent(RawMessageEventArgs e)
         {
-            if (RawMessageSent != null) RawMessageSent(this, e);
+            if (this.RawMessageSent != null)
+            {
+                this.RawMessageSent(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a raw message recieved.
@@ -378,7 +429,10 @@ namespace ChatSharp
         public event EventHandler<RawMessageEventArgs> RawMessageRecieved;
         internal void OnRawMessageRecieved(RawMessageEventArgs e)
         {
-            if (RawMessageRecieved != null) RawMessageRecieved(this, e);
+            if (this.RawMessageRecieved != null)
+            {
+                this.RawMessageRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a notice recieved.
@@ -386,7 +440,10 @@ namespace ChatSharp
         public event EventHandler<IrcNoticeEventArgs> NoticeRecieved;
         internal void OnNoticeRecieved(IrcNoticeEventArgs e)
         {
-            if (NoticeRecieved != null) NoticeRecieved(this, e);
+            if (this.NoticeRecieved != null)
+            {
+                this.NoticeRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when the server has sent us part of the MOTD.
@@ -394,7 +451,10 @@ namespace ChatSharp
         public event EventHandler<ServerMOTDEventArgs> MOTDPartRecieved;
         internal void OnMOTDPartRecieved(ServerMOTDEventArgs e)
         {
-            if (MOTDPartRecieved != null) MOTDPartRecieved(this, e);
+            if (this.MOTDPartRecieved != null)
+            {
+                this.MOTDPartRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when the entire server MOTD has been recieved.
@@ -402,7 +462,10 @@ namespace ChatSharp
         public event EventHandler<ServerMOTDEventArgs> MOTDRecieved;
         internal void OnMOTDRecieved(ServerMOTDEventArgs e)
         {
-            if (MOTDRecieved != null) MOTDRecieved(this, e);
+            if (this.MOTDRecieved != null)
+            {
+                this.MOTDRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a private message recieved. This can be a channel OR a user message.
@@ -410,7 +473,10 @@ namespace ChatSharp
         public event EventHandler<PrivateMessageEventArgs> PrivateMessageRecieved;
         internal void OnPrivateMessageRecieved(PrivateMessageEventArgs e)
         {
-            if (PrivateMessageRecieved != null) PrivateMessageRecieved(this, e);
+            if (this.PrivateMessageRecieved != null)
+            {
+                this.PrivateMessageRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a message is recieved in an IRC channel.
@@ -418,7 +484,10 @@ namespace ChatSharp
         public event EventHandler<PrivateMessageEventArgs> ChannelMessageRecieved;
         internal void OnChannelMessageRecieved(PrivateMessageEventArgs e)
         {
-            if (ChannelMessageRecieved != null) ChannelMessageRecieved(this, e);
+            if (this.ChannelMessageRecieved != null)
+            {
+                this.ChannelMessageRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a message is recieved from a user.
@@ -426,7 +495,10 @@ namespace ChatSharp
         public event EventHandler<PrivateMessageEventArgs> UserMessageRecieved;
         internal void OnUserMessageRecieved(PrivateMessageEventArgs e)
         {
-            if (UserMessageRecieved != null) UserMessageRecieved(this, e);
+            if (this.UserMessageRecieved != null)
+            {
+                this.UserMessageRecieved(this, e);
+            }
         }
         /// <summary>
         /// Raised if the nick you've chosen is in use. By default, ChatSharp will pick a
@@ -435,7 +507,10 @@ namespace ChatSharp
         public event EventHandler<ErronousNickEventArgs> NickInUse;
         internal void OnNickInUse(ErronousNickEventArgs e)
         {
-            if (NickInUse != null) NickInUse(this, e);
+            if (this.NickInUse != null)
+            {
+                this.NickInUse(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a user or channel mode is changed.
@@ -443,7 +518,10 @@ namespace ChatSharp
         public event EventHandler<ModeChangeEventArgs> ModeChanged;
         internal void OnModeChanged(ModeChangeEventArgs e)
         {
-            if (ModeChanged != null) ModeChanged(this, e);
+            if (this.ModeChanged != null)
+            {
+                this.ModeChanged(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a user joins a channel.
@@ -451,7 +529,10 @@ namespace ChatSharp
         public event EventHandler<ChannelUserEventArgs> UserJoinedChannel;
         internal void OnUserJoinedChannel(ChannelUserEventArgs e)
         {
-            if (UserJoinedChannel != null) UserJoinedChannel(this, e);
+            if (this.UserJoinedChannel != null)
+            {
+                this.UserJoinedChannel(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a user parts a channel.
@@ -459,7 +540,10 @@ namespace ChatSharp
         public event EventHandler<ChannelUserEventArgs> UserPartedChannel;
         internal void OnUserPartedChannel(ChannelUserEventArgs e)
         {
-            if (UserPartedChannel != null) UserPartedChannel(this, e);
+            if (this.UserPartedChannel != null)
+            {
+                this.UserPartedChannel(this, e);
+            }
         }
         /// <summary>
         /// Occurs when we have received the list of users present in a channel.
@@ -467,7 +551,10 @@ namespace ChatSharp
         public event EventHandler<ChannelEventArgs> ChannelListRecieved;
         internal void OnChannelListRecieved(ChannelEventArgs e)
         {
-            if (ChannelListRecieved != null) ChannelListRecieved(this, e);
+            if (this.ChannelListRecieved != null)
+            {
+                this.ChannelListRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when we have received the topic of a channel.
@@ -475,7 +562,10 @@ namespace ChatSharp
         public event EventHandler<ChannelTopicEventArgs> ChannelTopicReceived;
         internal void OnChannelTopicReceived(ChannelTopicEventArgs e)
         {
-            if (ChannelTopicReceived != null) ChannelTopicReceived(this, e);
+            if (this.ChannelTopicReceived != null)
+            {
+                this.ChannelTopicReceived(this, e);
+            }
         }
         /// <summary>
         /// Occurs when the IRC connection is established and it is safe to begin interacting with the server.
@@ -483,7 +573,10 @@ namespace ChatSharp
         public event EventHandler<EventArgs> ConnectionComplete;
         internal void OnConnectionComplete(EventArgs e)
         {
-            if (ConnectionComplete != null) ConnectionComplete(this, e);
+            if (this.ConnectionComplete != null)
+            {
+                this.ConnectionComplete(this, e);
+            }
         }
         /// <summary>
         /// Occurs when we receive server info (such as max nick length).
@@ -491,7 +584,10 @@ namespace ChatSharp
         public event EventHandler<SupportsEventArgs> ServerInfoRecieved;
         internal void OnServerInfoRecieved(SupportsEventArgs e)
         {
-            if (ServerInfoRecieved != null) ServerInfoRecieved(this, e);
+            if (this.ServerInfoRecieved != null)
+            {
+                this.ServerInfoRecieved(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a user is kicked.
@@ -499,7 +595,10 @@ namespace ChatSharp
         public event EventHandler<KickEventArgs> UserKicked;
         internal void OnUserKicked(KickEventArgs e)
         {
-            if (UserKicked != null) UserKicked(this, e);
+            if (this.UserKicked != null)
+            {
+                this.UserKicked(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a WHOIS response is received.
@@ -507,7 +606,10 @@ namespace ChatSharp
         public event EventHandler<WhoIsReceivedEventArgs> WhoIsReceived;
         internal void OnWhoIsReceived(WhoIsReceivedEventArgs e)
         {
-            if (WhoIsReceived != null) WhoIsReceived(this, e);
+            if (this.WhoIsReceived != null)
+            {
+                this.WhoIsReceived(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a user has changed their nick.
@@ -515,7 +617,10 @@ namespace ChatSharp
         public event EventHandler<NickChangedEventArgs> NickChanged;
         internal void OnNickChanged(NickChangedEventArgs e)
         {
-            if (NickChanged != null) NickChanged(this, e);
+            if (this.NickChanged != null)
+            {
+                this.NickChanged(this, e);
+            }
         }
         /// <summary>
         /// Occurs when a user has quit.
@@ -523,7 +628,10 @@ namespace ChatSharp
         public event EventHandler<UserEventArgs> UserQuit;
         internal void OnUserQuit(UserEventArgs e)
         {
-            if (UserQuit != null) UserQuit(this, e);
+            if (this.UserQuit != null)
+            {
+                this.UserQuit(this, e);
+            }
         }
     }
 }

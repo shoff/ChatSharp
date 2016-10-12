@@ -14,7 +14,9 @@ namespace ChatSharp.Handlers
             var user = client.Users.GetOrAdd(message.Prefix);
             user.Channels.Add(channel);
             if (channel != null)
+            {
                 client.OnUserJoinedChannel(new ChannelUserEventArgs(channel, new IrcUser(message.Prefix)));
+            }
         }
 
         public static void HandleGetTopic(IrcClient client, IrcMessage message)
@@ -36,13 +38,17 @@ namespace ChatSharp.Handlers
         public static void HandlePart(IrcClient client, IrcMessage message)
         {
             if (!client.Channels.Contains(message.Parameters[0]))
+            {
                 return; // we aren't in this channel, ignore
+            }
 
             var user = client.Users.Get(message.Prefix);
             var channel = client.Channels[message.Parameters[0]];
 
             if (user.Channels.Contains(channel))
+            {
                 user.Channels.Remove(channel);
+            }
             client.OnUserPartedChannel(new ChannelUserEventArgs(client.Channels[message.Parameters[0]],
                 new IrcUser(message.Prefix)));
         }
@@ -54,27 +60,41 @@ namespace ChatSharp.Handlers
             foreach (var nick in users)
             {
                 if (string.IsNullOrWhiteSpace(nick))
+                {
                     continue;
+                }
                 var mode = client.ServerInfo.GetModeForPrefix(nick[0]);
                 if (mode == null)
                 {
                     var user = client.Users.GetOrAdd(nick);
                     if (!user.Channels.Contains(channel))
+                    {
                         user.Channels.Add(channel);
+                    }
                     if (!user.ChannelModes.ContainsKey(channel))
+                    {
                         user.ChannelModes.Add(channel, null);
+                    }
                     else
+                    {
                         user.ChannelModes[channel] = null;
+                    }
                 }
                 else
                 {
                     var user = client.Users.GetOrAdd(nick.Substring(1));
                     if (!user.Channels.Contains(channel))
+                    {
                         user.Channels.Add(channel);
+                    }
                     if (!user.ChannelModes.ContainsKey(channel))
+                    {
                         user.ChannelModes.Add(channel, mode.Value);
+                    }
                     else
+                    {
                         user.ChannelModes[channel] = mode.Value;
+                    }
                 }
             }
         }
@@ -116,7 +136,9 @@ namespace ChatSharp.Handlers
             var channel = client.Channels[message.Parameters[0]];
             var kicked = channel.Users[message.Parameters[1]];
             if (kicked.Channels.Contains(channel))
+            {
                 kicked.Channels.Remove(channel);
+            }
             client.OnUserKicked(new KickEventArgs(channel, new IrcUser(message.Prefix),
                 kicked, message.Parameters[2]));
         }
