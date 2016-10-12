@@ -8,11 +8,11 @@ namespace ChatSharp
     {
         internal ClientSettings()
         {
-            WhoIsOnConnect = true;
-            WhoIsOnJoin = false;
-            ModeOnJoin = true;
-            GenerateRandomNickIfRefused = true;
-            JoinWhoIsDelay = 1;
+            this.WhoIsOnConnect = true;
+            this.WhoIsOnJoin = false;
+            this.ModeOnJoin = true;
+            this.GenerateRandomNickIfRefused = true;
+            this.JoinWhoIsDelay = 1;
         }
 
         /// <summary>

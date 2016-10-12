@@ -5,6 +5,8 @@ using System.Linq;
 
 namespace ChatSharp
 {
+    using Resources;
+
     /// <summary>
     /// A collection of IRC channels a user is present in.
     /// </summary>
@@ -12,12 +14,12 @@ namespace ChatSharp
     {
         internal ChannelCollection()
         {
-            Channels = new List<IrcChannel>();
+            this.Channels = new List<IrcChannel>();
         }
 
         internal ChannelCollection(IrcClient client) : this()
         {
-            Client = client;
+            this.Client = client;
         }
 
         private IrcClient Client { get; set; }
@@ -25,14 +27,16 @@ namespace ChatSharp
 
         internal void Add(IrcChannel channel)
         {
-            if (Channels.Any(c => c.Name == channel.Name))
-                throw new InvalidOperationException("That channel already exists in this collection.");
-            Channels.Add(channel);
+            if (this.Channels.Any(c => c.Name == channel.Name))
+            {
+                throw new InvalidOperationException(eng.That_channel_already_exists_in_this_collection);
+            }
+            this.Channels.Add(channel);
         }
 
         internal void Remove(IrcChannel channel)
         {
-            Channels.Remove(channel);
+            this.Channels.Remove(channel);
         }
 
         /// <summary>
@@ -40,10 +44,14 @@ namespace ChatSharp
         /// </summary>
         public void Join(string name)
         {
-            if (Client != null)
-                Client.JoinChannel(name);
+            if (this.Client != null)
+            {
+                this.Client.JoinChannel(name);
+            }
             else
-                throw new InvalidOperationException("Cannot make other users join channels.");
+            {
+                throw new InvalidOperationException(eng.Cannot_make_other_users_join_channels);
+            }
         }
 
         /// <summary>
@@ -51,19 +59,13 @@ namespace ChatSharp
         /// </summary>
         public bool Contains(string name)
         {
-            return Channels.Any(c => c.Name == name);
+            return this.Channels.Any(c => c.Name == name);
         }
 
         /// <summary>
         /// Gets the channel at the given index.
         /// </summary>
-        public IrcChannel this[int index]
-        {
-            get
-            {
-                return Channels[index];
-            }
-        }
+        public IrcChannel this[int index] => this.Channels[index];
 
         /// <summary>
         /// Gets the channel by the given channel name, including channel prefix (i.e. '#')
@@ -72,19 +74,23 @@ namespace ChatSharp
         {
             get
             {
-                var channel = Channels.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+                var channel = this.Channels.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
                 if (channel == null)
+                {
                     throw new KeyNotFoundException();
+                }
                 return channel;
             }
         }
 
         internal IrcChannel GetOrAdd(string name)
         {
-            if (this.Contains(name))
+            if (Contains(name))
+            {
                 return this[name];
-            var channel = new IrcChannel(Client, name);
-            this.Add(channel);
+            }
+            var channel = new IrcChannel(this.Client, name);
+            Add(channel);
             return channel;
         }
 
@@ -93,7 +99,7 @@ namespace ChatSharp
         /// </summary>
         public IEnumerator<IrcChannel> GetEnumerator()
         {
-            return Channels.GetEnumerator();
+            return this.Channels.GetEnumerator();
         }
 
         /// <summary>
